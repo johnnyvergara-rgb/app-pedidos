@@ -3,9 +3,10 @@ pandas==2.2.2
 numpy==1.26.4
 openpyxl==3.1.5
 xlrd==2.0.1
-streamlit-aggrid==1.1.2
+st-aggrid
 pyarrow==19.0.1
 requests==2.32.3
 python-dateutil==2.9.0.post0
+
 
 
