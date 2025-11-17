@@ -290,7 +290,8 @@ def cargar_manual_listmarc():
         excel.Quit()
 
         # 📥 Leer el archivo convertido a xlsx
-        df = pd.read_excel(ruta_xlsx, engine="openpyxl")
+        df = pd.read_excel(uploaded_file, engine="openpyxl")
+
 
         # ✅ Verificar columnas cargadas
         st.write("📋 Columnas detectadas:", df.columns.tolist())
@@ -382,16 +383,17 @@ def cargar_manual_listmarc():
         st.error(f"❌ Error al cargar ListMarc.XLS: {e}")
 
 
+
 # === Cargar Stock blanks ===
-def cargar_stock_blanks():
+def cargar_stock_blanks(uploaded_file):
+
     try:
-        import fractions  # asegúrate de que esté importado
+        import fractions
 
         ruta_original = r"C:\A_Programación\Stock blanks.XLS"
         ruta_temporal = r"C:\A_Programación\Stock_temp.XLS"
         ruta_xlsx = ruta_temporal.replace(".XLS", ".xlsx")
 
-        # Convertir a .xlsx con Excel COM
         shutil.copyfile(ruta_original, ruta_temporal)
         pythoncom.CoInitialize()
         excel = win32com.client.DispatchEx("Excel.Application")
@@ -403,15 +405,12 @@ def cargar_stock_blanks():
         libro.Close(SaveChanges=False)
         excel.Quit()
 
-        # Leer con pandas
         df = pd.read_excel(ruta_xlsx, engine="openpyxl")
         st.write("📦 Columnas de stock detectadas:", df.columns.tolist())
 
-        # 🧼 Eliminar columnas tipo "CAMP"
         columnas_filtradas = [col for col in df.columns if not col.upper().startswith("CAMP")]
         df = df[columnas_filtradas]
 
-        # === Normalizar columnas con limpieza final
         def convertir_a_coma(valor):
             try:
                 valor = str(valor).strip().replace(",", ".")
@@ -429,12 +428,9 @@ def cargar_stock_blanks():
             except:
                 return valor
 
-        if "ESP_CUB" in df.columns:
-            df["ESP_CUB"] = df["ESP_CUB"].apply(convertir_a_coma)
-        if "ANC_CUB" in df.columns:
-            df["ANC_CUB"] = df["ANC_CUB"].apply(convertir_a_coma)
-        if "LAR_CUB" in df.columns:
-            df["LAR_CUB"] = df["LAR_CUB"].apply(convertir_a_coma)
+        for col in ["ESP_CUB", "ANC_CUB", "LAR_CUB"]:
+            if col in df.columns:
+                df[col] = df[col].apply(convertir_a_coma)
 
         def transformar_calidad(valor):
             valor = str(valor).strip().upper()
@@ -450,11 +446,6 @@ def cargar_stock_blanks():
         if "CALIDAD" in df.columns:
             df["CALIDAD"] = df["CALIDAD"].apply(transformar_calidad)
 
-
-
-
-
-        # Guardar tabla limpia
         df.to_sql("StockBlanks", conn, if_exists="replace", index=False)
         st.success(f"✅ Stock cargado y normalizado con {len(df)} registros.")
 
@@ -464,12 +455,6 @@ def cargar_stock_blanks():
     except Exception as e:
         st.error(f"❌ Error al cargar y normalizar stock: {e}")
 
-
-       
-
-        # 🔧 Normalizar Pos.OFA a 4 dígitos
-        if "Pos.OFA" in df.columns:
-            df["Pos.OFA"] = df["Pos.OFA"].astype(str).str.zfill(4)
 
         # 🧠 Validar columnas válidas contra la tabla
         columnas_validas = pd.read_sql("SELECT * FROM Pedidos LIMIT 1", conn).columns
@@ -560,12 +545,22 @@ with cols[1]:
             st.toast(f"❌ Error cargando ListMarc.XLS: {e}", icon="❌")
 
 with cols[2]:
-    if st.button("📦 Cargar Stock blanks.XLS", use_container_width=True):
+
+    # Subir archivo XLS ó XLSX
+    archivo_stock = st.file_uploader(
+        "📤 Subir archivo de stock (XLS/XLSX)",
+        type=["xls", "xlsx"],
+        key="uploader_stock"
+    )
+
+    # Botón para cargar el stock desde el archivo subido
+    if st.button("📦 Cargar Stock", use_container_width=True):
         try:
-            cargar_stock_blanks()
-            st.toast("✅ Stock blanks.XLS cargado correctamente.")
+            cargar_stock_blanks(archivo_stock)
+            st.toast("✅ Stock cargado correctamente.")
         except Exception as e:
             st.toast(f"❌ Error cargando stock: {e}", icon="❌")
+
 
 with cols[3]:
     if st.button("📊 Exportar tablas a Excel", use_container_width=True):
